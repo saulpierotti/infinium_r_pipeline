@@ -48,6 +48,7 @@ Now I load the raw experimental data relative to the sample sheet and I create t
 
 ```{r}
 RGSet <- suppressWarnings(read.metharray.exp(base='./Input_data',targets = targets))
+dim(RGSet)
 ```
 
 # Step 2
@@ -60,9 +61,11 @@ These data are then converted to 2 data frames of the same dimensionality (8\*62
 ```{r}
 Red <- data.frame(getRed(RGSet))
 Green <- data.frame(getGreen(RGSet))
+dim(Red)
+dim(Green)
 ```
 
-## Step 3
+# Step 3
 These are the instructions:
 > Fill the following table: what are the Red and Green fluorescences for the address assigned to you?
 > Optional: check in the manifest file if the address corresponds to a Type I or a Type II probe and, in case of Type I probe, report its color.
@@ -108,18 +111,19 @@ With all of these pieces of information I can complete the table as assigned (I 
 | 1029   | DS    | 5930514035 | R04C02 |            11625 |                584 |   II |     / |
 | 3029   | WT    | 5930514035 | R06C02 |            13019 |                668 |   II |     / |
 
-## Step 4
+# Step 4
 These are the instructions:
 > Create the object MSet.raw
 
-I use the `preprocessRaw` function on the RGSet to get the raw Mset.
+I use the `preprocessRaw` function on the RGSet to get the raw MSet.
 
 
 ```{r}
 MSet.raw <- preprocessRaw(RGSet)
+dim(MSet.raw)
 ```
 
-## Step 5
+# Step 5
 These are the instructions:
 > Perform the following quality checks and provide a brief comment to each step:
 > * QCplot
@@ -143,17 +147,20 @@ controlStripPlot(RGSet, controls="NEGATIVE")
 ```
 
 The represented color are inverted (the red is shown in green and vice-versa). This was observed also during the lectures and it can be a bug of the package (minfi). During the lectures we also determined that the text label refers to the correct color, not the actual color of the plot.
-The negative controls are all fine since their intensity is below 1000 (10 in Log2 scale).
+The negative controls are all fine since their intensity is at background levels (below 10 in Log2 scale).
+We can notice how the negative control probes intensities show slight differences across slides in a manner that is fairly consistent across the 2 color channels.
+
 Now I will determine the detection p-values for the probes using the `detectionP` function on the RGSet.
-I will consider as failed the probes with a detection p-value higher than the assigned threshold of 0.01.
+I will consider as failed the probes with a detection p-value higher than the assigned student-specific threshold of 0.01.
 
 
 ```{r}
 detP <- detectionP(RGSet)
+dim(detP)
 failed <- detP>0.01
+table(failed)
 summary(failed)
 ```
-
 The following number of probes has a p-value higher than the threshold for each one of the samples:
 
 | Sample | Group |      Slide | Array  | Failed probes (p-value > 0.01) |
@@ -167,13 +174,26 @@ The following number of probes has a p-value higher than the threshold for each 
 | 1029   | DS    | 5930514035 | R04C02 |                             60 |
 | 3029   | WT    | 5930514035 | R06C02 |                            149 |
 
-Even if not specified in the assignment, I decided to filter out the failed probes from the dataset.
+Even if not specified in the assignment, it can be useful to look for the percentages of failed probes in each sample.
 
 ```{r}
-
+sample_failed_probes_percentage <- colMeans(failed)
+sample_failed_probes_percentage
 ```
+All the samples seem to show an acceptable amount of failed probes.
+I can also check for probes that failed (according to the aforementioned criterion) on more than 1% of the samples (also this was not required in the assignment).
 
-## Step 6
+```{r}
+mean_failure_probes <- rowMeans(failed)
+probes_to_be_retained <- mean_failure_probes<0.01
+summary(probes_to_be_retained)
+probes_to_be_removed <- !probes_to_be_retained
+names_probes_to_be_removed <- names(probes_to_be_removed)
+```
+There are 1307 probes that failed in more than 1% of the samples.
+I will save their name in a vector to eventually filter them out later, but I will retain them for now so to avoid possible problems with processing due to missing probes.
+
+# Step 6
 These are the instructions:
 > Calculate raw beta and M values and plot the densities of mean
 methylation values, dividing the samples in DS and WT (suggestion: subset the beta and M values matrixes in order to retain DS or WT
@@ -184,21 +204,25 @@ I first extract the beta and M values from the MSet.raw using the `getBeta` and 
 
 ```{r}
 beta <- getBeta(MSet.raw)
+summary(beta)
 M <- getM(MSet.raw)
+summary(M)
 ```
 
 Now I subset the beta and M value matrices on the basis of the group (DS or WT) of the sample.
 
 
 ```{r}
-isDS_bool <- targets$Group=='DS' # getting a boolean vector according to the sample group
-beta_DS <- beta[,isDS_bool] # subsetting the beta values and M values on the boolean vector
-beta_WT <- beta[,!isDS_bool]
-M_DS <- M[,isDS_bool]
-M_WT <- M[,!isDS_bool]
+isDS <- targets$Group=='DS'
+summary(isDS)
+beta_DS <- beta[,isDS]
+beta_WT <- beta[,!isDS]
+M_DS <- M[,isDS]
+M_WT <- M[,!isDS]
 ```
 
 Now I calculate the mean beta and M values for each queried position across the 2 sample groups (across rows, MARGIN=1), discarding NA values (na.rm=T).
+I need to discard NA values since, where both the methylated and unmethilated signals are 0, the beta and M values are not defined.
 
 
 ```{r}
@@ -220,16 +244,17 @@ M_WT_mean_d <- density(M_WT_mean)
 
 
 ```{r}
+par(mfrow=c(1,2))
 plot(beta_DS_mean_d,main="Density of Beta Values",col="red")
 lines(beta_WT_mean_d,main="Density of Beta Values",col="blue")
 plot(M_DS_mean_d,main="Density of M Values",col="red")
 lines(M_WT_mean_d,main="Density of M Values",col="blue")
 ```
 
-The red lines represents the DS samples beta/M mean density while the blue line represents that of the WT samples.
+The red lines represents the DS samples beta/M mean densities while the blue line represents that of the WT samples.
 We can see how in the 2 sample groups both beta and M values tend to have a very similar distribution.
 
-## Step 7
+# Step 7
 These are the instructions:
 > Normalize the data using the function assigned to each student and
 compare raw data and normalized data. Produce a plot with 6 panels
@@ -243,13 +268,15 @@ I first extract the type I and type II probe names from the manifest of the arra
 
 
 ```{r}
-type_I <- getProbeInfo(MSet.raw, type = 'I')$Name # vector of probe IDs
+type_I <- getProbeInfo(MSet.raw, type = 'I')$Name
 type_II <- getProbeInfo(MSet.raw, type = 'II')$Name
-beta_I <- beta[rownames(beta) %in% type_I,] # subset of the beta matrix containing only type I probes
-beta_II <- beta[rownames(beta) %in% type_II,] # subset of the beta matrix containing only type II probes
+beta_I <- beta[rownames(beta) %in% type_I,]
+beta_II <- beta[rownames(beta) %in% type_II,]
+dim(beta_I)
+dim(beta_II)
 ```
 
-I then calculate mean and standard deviation density for type I and type II probes.
+I then calculate mean and standard deviation densities for type I and type II probes.
 
 
 ```{r}
@@ -269,6 +296,7 @@ This will produce a GenomicRatioSet object.
 
 ```{r}
 normalized_data <- preprocessFunnorm(RGSet)
+normalized_data
 ```
 
 I can now extract the normalized beta values using the `getBeta` function and then separate type I and type II probes as done with the original data.
@@ -289,30 +317,31 @@ d_sd_beta_I_norm <- density(sd_beta_I_norm)
 d_sd_beta_II_norm <- density(sd_beta_II_norm)
 ```
 
-Finally I can produce plots of mean beta value density and standard deviation density, differentiated by chemistry of the probes and for raw and normalized data.
+Finally I can produce plots of mean beta value densities and standard deviation densities, differentiated by chemistry of the probes and for raw and normalized data.
 I also produce a box plot of the beta values across samples for the raw and normalized data.
+I set the axes limits so to make the plots easier to compare.
 
 
 ```{r}
 par(mfrow=c(2,3))
-plot(d_mean_beta_I,col="blue",main="raw beta")
+plot(d_mean_beta_I,col="blue",main="raw beta",xlim=c(0,1),ylim=c(0,5))
 lines(d_mean_beta_II,col="red")
-plot(d_sd_beta_I,col="blue",main="raw sd")
+plot(d_sd_beta_I,col="blue",main="raw sd",xlim=c(0,0.6),ylim=c(0,60))
 lines(d_sd_beta_II,col="red")
-boxplot(beta)
-plot(d_mean_beta_I_norm,col="blue",main="preprocessFunnorm beta")
+boxplot(beta,ylim=c(0,1))
+plot(d_mean_beta_I_norm,col="blue",main="preprocessFunnorm beta",xlim=c(0,1),ylim=c(0,5))
 lines(d_mean_beta_II_norm,col="red")
-plot(d_sd_beta_I_norm,col="blue",main="preprocessFunnorm sd")
+plot(d_sd_beta_I_norm,col="blue",main="preprocessFunnorm sd",xlim=c(0,0.6),ylim=c(0,60))
 lines(d_sd_beta_II_norm,col="red")
-boxplot(beta_norm)
+boxplot(beta_norm,ylim=c(0,1))
 ```
 
-I can observe that the distribution of beta values is almost identical across samples for the normalized data, while it is more variable for the raw data. Only the median in the normalized data seems to differ slightly among samples.
-The distribtion of median densities and standard deviation densities is almost equivalent among type I and II probes in the normalized data, while it is heavily different in the raw data. In the raw data the density of standard deviations for type II probes tend to be shifted towards higher values compared to type I probes.
-The peaks on the mean density distribution for the type II probes is more shifted towards the center compared to type I probes in the raw data.
-All of these differences among chemistries in the raw data are as expected: type II probes are more variable and they show a narrower range of beta values compared to type I probes.
+I can observe that the distribution of beta values is almost identical across samples for the normalized data (box plot), while it is more variable for the raw data. Only the median in the normalized data seems to differ slightly among samples.
+The distribution of mean densities and standard deviation densities is almost equivalent among type I and II probes in the normalized data, while it is heavily different in the raw data. In the raw data the density of standard deviations for type II probes tend to be shifted towards higher values compared to type I probes.
+The peaks on the mean density distribution for the type II probes are more shifted towards the center compared to type I probes in the raw data.
+All of these differences among chemistry types in the raw data are as expected: type II probes are more variable and they show a narrower range of beta values compared to type I probes.
 
-## Step 8
+# Step 8
 These are the instructions:
 > Perform a PCA on the beta matrix generated in step 7. Comment the
 plot.
