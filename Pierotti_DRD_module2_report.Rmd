@@ -44,8 +44,7 @@ targets <- read.metharray.sheet(data_dir)
 Now I load the raw experimental data relative to the sample sheet and I create the `RGChannelSet` object using the `read.metharray.exp` function.
 
 ```{r, message=FALSE, warning=FALSE}
-RGSet <-
-  suppressWarnings(read.metharray.exp(base = './Input_data', targets = targets))
+RGSet <- read.metharray.exp(base = './Input_data', targets = targets)
 dim(RGSet)
 ```
 
@@ -119,9 +118,12 @@ dim(MSet.raw)
 
 # Step 5
 > Perform the following quality checks and provide a brief comment to each step:
-  * QCplot
-  * check the intensity of negative controls using minfi
-  * calculate detection pValues; for each sample, how many probes have a detection p-value higher than the threshold assigned to each student?
+
+> QCplot
+
+> check the intensity of negative controls using minfi
+
+> calculate detection pValues; for each sample, how many probes have a detection p-value higher than the threshold assigned to each student?
 
 I first create a QC plot by getting the medians of the methylated and unmethylated channels for each sample with the `getQC` function and plotting them with the `plotQC` function.
 
@@ -139,7 +141,7 @@ controlStripPlot(RGSet, controls = "NEGATIVE")
 
 The represented colors are inverted (the red is shown in green and vice-versa). This was observed also during the lectures and it can be a bug of the package (`minfi`). During the lectures, we determined that the textual label is correct, while the color of the dots is inverted.
 The negative controls are all fine since their intensity is at background levels (below 10 in Log2 scale).
-We can notice how the negative control probes intensities show slight differences across slides in a manner that is fairly consistent across the 2 color channels.
+We can notice how the negative control probes intensities show slight differences across slides in a manner that is fairly consistent for the 2 color channels.
 
 Now I will determine the detection p-values for the probes using the `detectionP` function on the `RGSet`.
 I will consider as failed the probes with a detection p-value higher than the assigned student-specific threshold of 0.01.
@@ -188,7 +190,7 @@ names_probes_to_be_removed <- names(probes_to_be_removed)
 I will save their name in a vector to eventually filter them out later, but I will retain them, for now, to avoid possible problems with processing due to missing probes.
 
 # Step 6
-> Calculate raw beta and M values and plot the densities of mean methylation values, dividing the samples in DS and WT (suggestion: subset the beta and M values matrixes to retain DS or WT subjects and apply the function mean to the 2 subsets). 
+> Calculate raw beta and M values and plot the densities of mean methylation values, dividing the samples in DS and WT (suggestion: subset the beta and M values matrixes to retain `DS` or `WT` subjects and apply the function mean to the 2 subsets). 
 
 I first extract the beta and M values from `MSet.raw` using the `getBeta` and `getM` functions.
 
@@ -237,7 +239,7 @@ plot(M_DS_mean_d, main = "Density of M Values", col = "red")
 lines(M_WT_mean_d, main = "Density of M Values", col = "blue")
 ```
 
-The red lines represent the DS samples beta/M mean densities while the blue line represents that of the `WT` samples.
+The red lines represent the `DS` samples beta and M values mean densities while the blue lines represent those of the `WT` samples.
 We can see how in the 2 sample groups both beta and M values tend to have a very similar distribution.
 
 # Step 7
@@ -338,7 +340,7 @@ lines(d_sd_beta_II_norm, col = "red")
 boxplot(beta_norm, ylim = c(0, 1))
 ```
 
-I can observe that the distribution of beta values is almost identical across samples for the normalized data (box plot), while it is more variable for the raw data. Only the median in the normalized data seems to differ slightly among samples.
+I can observe that the distribution of beta (in the boxplots) values is almost identical across samples for the normalized data, while it is more variable for the raw data. Only the median in the normalized data seems to differ slightly among samples.
 The distribution of mean densities and standard deviation densities is almost equivalent among type I and II probes in the normalized data, while it is heavily different in the raw data. In the raw data, the density of standard deviations for type II probes tend to be shifted towards higher values compared to type I probes.
 The peaks on the mean density distribution for the type II probes are more shifted towards the center compared to type I probes in the raw data.
 All of these differences among chemistry types in the raw data are as expected: type II probes are more variable and they show a narrower range of beta values compared to type I probes.
@@ -361,8 +363,7 @@ plot(pca_results)
 In the screw plot, it seems that the variance is quite uniformly distributed among the first 7 components.
 The 8th component contains really limited variance, and so the first 7 components can explain almost all of the variability of the dataset.
 This may mean that the samples differ sensibly on more than a few orthogonal axes.
-I can plot the first 2 to components to see if the DS and WT groups are separated according to those dimensions.
-I can also color the same plot according to the array used, to spot batch effects.
+I can plot the first 2 to components to see if the `DS` and `WT` groups are separated according to those dimensions.
 
 ```{r, message=FALSE, warning=FALSE}
 palette("default")
@@ -405,7 +406,7 @@ legend(
 
 From these plots, I can see how the 2 groups (`DS` and `WT`) seem distinct according to the first 2 principal components.
 A line of the type $y=x$ seems to well separate the 2 groups.
-DS seems confined to a region where PC1 is greater than PC2, while `WT` is confined in a region where PC2 is greater than PC1.
+`DS`samples seem confined to a region where PC1 is greater than PC2, while `WT` samples are confined in a region where PC2 is greater than PC1.
 The samples seem to be highly clustered according to the slide in which they were run (presumably due to batch effects).
 However, slide `5930514035`, which contains a sample from the `DS` group and a sample from the `WT` group, still respects the pattern of separation between sample groups.
 Randomization of the samples on the slides would have been advisable to allow to test for batch effects separately from sample groups.
@@ -559,7 +560,10 @@ heatmap.2(
 )
 ```
 
-I will also try to use Pearson and Spearman correlation coefficients as distance metrics, instead of euclidean distance.
+We can notice how the result is not so influenced by the linkage method used.
+The samples are well clustered in `WT` and `DS` with all the 3 methods.
+I will also perform hierarchical clustering using the Pearson and Spearman correlation coefficients as distance metrics, instead of euclidean distance.
+This time I will use average linkage as a linkage method.
 
 ```{r, message=FALSE, warning=FALSE}
 heatmap.2(
@@ -596,6 +600,9 @@ heatmap.2(
 )
 ```
 
+The terminal branches for both samples and probes seem much shorter when using the Pearson correlation coefficient as a distance metric.
+In general, using Pearson and Spearman correlation makes the profiles appear more closely related than using Euclidean distance.
+
 # Step 12
 > Produce a volcano plot and a Manhattan plot of the results of differential methylation analysis
 
@@ -614,18 +621,17 @@ summary(delta)
 ```
 
 At this point, `delta` contains the differential mean beta values between sample groups, for each position.
-I can now plot the delta against the $-\log_{10}$ of the corrected p-values.
-I will use the `BH` p-values here.
+I can now plot `delta` against the $-\log_{10}$ of the corrected p-values.
 
 ```{r, message=FALSE, warning=FALSE}
 neg_log10_p_BH <- -log10(complete_beta_p_df[, 10])
 plot(delta, neg_log10_p_BH, ylim = c(0, 3), pch = '.')
-abline(a = -log10(0.05),
+abline(a = -log10(0.01),
        b = 0,
        col = "red")
 ```
 
-We can see how the p-values are binned at discrete levels (a consequence of the Mann-Whitney test) and nothing reaches the significance threshold of 0.05.
+We can see how the p-values are binned at discrete levels (a consequence of the Mann-Whitney test) and nothing reaches the significance threshold of $0.01$.
 
 For obtaining the Manhattan plot, I first merge the data frame containing the p-values for each probe with the annotation of the probes, using the `merge` function and merging according to the probe name.
 
@@ -690,15 +696,15 @@ mhtplot(
   pch = 16
 )
 axis(2, cex = 0.5)
-abline(a = -log10(0.05), b = 0)
+abline(a = -log10(0.01), b = 0)
 ```
 
-We can see how all the probes have a corrected p-value much below the significance threshold, and there are no significant differences across chromosomes.
+We can see how all the probes have a corrected p-value much higher than the significance threshold, and there are no significant differences across chromosomes.
 We can also notice the binned distribution of the Mann-Whitney p-values.
 
 Both the volcano plot and the Manhattan plot have an appearance that is quite different from what I am used to.
 I suspect that this is due to the use of a non-parametric test (Mann-Whitney U test).
-To test this hypothesis I will here repeat the analysis by using a Welch test and without changing the normalization procedure.
+To test this hypothesis I will here repeat the analysis using the Welch test.
 
 The code for the Welch test:
 
@@ -745,7 +751,7 @@ plot(delta_t,
      neg_log10_p_BH_t,
      ylim = c(0, 3),
      pch = '.')
-abline(a = -log10(0.05),
+abline(a = -log10(0.01),
        b = 0,
        col = "red")
 ```
@@ -805,14 +811,14 @@ mhtplot(
   pch = 16
 )
 axis(2, cex = 0.5)
-abline(a = -log10(0.05), b = 0)
+abline(a = -log10(0.01), b = 0)
 ```
 
 Now the volcano and Manhattan plots look more familiar.
 Therefore, I conclude that the peculiar appearance of the volcano and Manhattan plots is due to the use of a non-parametric test, which does not have enough statistical power to detect differentially methylated probes in this dataset.
 
 # Optional task
-> As DS is caused by the trisomy of chromosome 21, try also to plot the density of the methylation values of the probes mapping on chromosome 21.
+> As `DS` is caused by the trisomy of chromosome 21, try also to plot the density of the methylation values of the probes mapping on chromosome 21.
 
 > Do you see a very clear difference between the samples?
 
@@ -846,14 +852,16 @@ plot(d_mean_chr21_beta_DS, main = "Density of Beta Values", col = "red")
 lines(d_mean_chr21_beta_WT, main = "Density of Beta Values", col = "blue")
 ```
 
+I observe that there are no significant differences among `DS` and `WT` samples regarding the distribution of mean beta values for probes on chromosome 21.
+
 Now I want to evaluate how many probes are differentially methylated on chromosome 21.
 I will just extract this information from the complete data frame obtained in the previous steps.
 I will use raw p-values here.
 
 ```{r, message=FALSE, warning=FALSE}
-diff_met_chr21 <- chr21_complete[chr21_complete$pval_raw <= 0.05, ]
+diff_met_chr21 <- chr21_complete[chr21_complete$pval_raw <= 0.01, ]
 dim(diff_met_chr21)
 ```
 
-On chromosome 21, 44 probes are differentially methylated according to raw p-value adopting a $0.05$ threshold.
+On chromosome 21, 44 probes are differentially methylated according to raw p-value adopting a $0.01$ threshold.
 No significant p-values are present in the whole dataset after multiple testing correction, so there is no need to look for significant probes on chromosome 21.
