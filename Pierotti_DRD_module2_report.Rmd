@@ -488,53 +488,68 @@ heatmap.2(input_heatmap,col=terrain.colors(100),Rowv=T,Colv=T,dendrogram="both",
 From the heatmap we notice how the 2 sample groups are well clustered according to the methylation status of the top 100 probes.
 Some probes are more methylated in one of the groups, other probes in the other.
 
-## Step 12
+# Step 12
 These are the instructions:
 > Produce a volcano plot and a Manhattan plot of the results of
 differential methylation analysis
 
-For obtaining a Volcano plot, I need a dataframe containing a measure of the differential methylation of each probe among sample groups (the difference of mean beta values across groups), and the -log10 p-value of such differences.
-Since this is not specified in the assignment, I will use the normalised beta values from step 7 in this section, and the BH p-values from step 10.
+For obtaining a Volcano plot, I need the difference in average methylation status for each probe among the 2 sample groups.
+Since this is not specified in the assignment, I will use the normalized beta values from step 7 in this section, and the BH p-values from step 10.
 Here I calculate the mean beta values for each probe in each sample group and their difference (across the 2 sample groups).
 
 
 ```{r}
-beta_DS <- beta_norm[,groups=='DS']
-beta_WT <- beta_norm[,groups=='WT']
-mean_beta_DS <- apply(beta_DS,1,mean)
-mean_beta_WT <- apply(beta_WT,1,mean)
-diff <- mean_beta_DS - mean_beta_WT
+beta_norm_sorted <- complete_beta_p_df[,1:8]
+beta_norm_sorted_DS <- beta_norm_sorted[,groups=="DS"]
+beta_norm_sorted_WT <- beta_norm_sorted[,groups=="WT"]
+mean_beta_DS <- apply(beta_norm_sorted_DS,1,mean)
+mean_beta_WT <- apply(beta_norm_sorted_WT,1,mean)
+delta <- mean_beta_DS - mean_beta_WT
+summary(delta)
 ```
 
-At this poit `diff` contains the differential mean beta values between sample groups, for each position.
-Now I want to create a dataframe that includes also the -log10 of the BH p-value for each probe and plot it.
+At this point `delta` contains the differential mean beta values between sample groups, for each position.
+I can now plot the delta against the -log10 of the BH-corrected p-values.
 
 
 ```{r}
-volcano_df <- data.frame(diff, -log10(corrected_pValues_BH))
-plot(volcano_df[,1], volcano_df[,2],pch=16,cex=0.5)
-abline(a=0.1,b=0,col="red")
+neg_log10_p_BH <- -log10(complete_beta_p_df[,10])
+plot(delta, neg_log10_p_BH,ylim=c(0,3),pch='.')
+abline(a=-log10(0.05),b=0,col="red")
 ```
+We can see how the p-values are binned at discrete levels (a consequence of the Mann-Whithney test) and nothing reaches the significance threshold of 0.05.
 
-For obtaining the Manhattan plot, I first merge the dataframe containing the p-values for each probe with the annotation of the probes, using the `merge` function.
+For obtaining the Manhattan plot, I first merge the dataframe containing the p-values for each probe with the annotation of the probes, using the `merge` function and merging according to probe name.
 
 
 ```{r}
-df_manplot <- data.frame(rownames(final_mwtest), final_mwtest)
-colnames(df_manplot)[1] <- 'Name'
-df_manplot <- merge(df_manplot, getAnnotation(RGSet),by="Name")
-df_manplot
+df_manhattan <- data.frame(rownames(complete_beta_p_df), complete_beta_p_df)
+colnames(df_manhattan)[1] <- 'Name'
+annotation <- getAnnotation(RGSet)
+colnames(annotation)
+df_manhattan <- merge(df_manhattan, annotation,by="Name")
+colnames(df_manhattan)
 ```
-
+Now I extract only the columns needed for obtaining the Manhattan plot (chromosome, position, BH p-value). I also rename the columns for clarity and order the levels according to the chromosome number.
 
 ```{r}
-input_Manhattan <- data.frame(df_manplot$chr, df_manplot$pos, df_manplot$corrected_pValues_BH)
-str(input_Manhattan)
-#input_Manhattan$df_manplot.chr <- factor(input_Manhattan$df_manplot.chr,levels=c("1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21","22","X","Y"))
-levels(input_Manhattan$df_manplot.chr)
+chr_vect <- factor(df_manhattan$chr,levels=c("chr1","chr2","chr3","chr4","chr5","chr6","chr7","chr8","chr9","chr10","chr11","chr12","chr13","chr14","chr15","chr16","chr17","chr18","chr19","chr20","chr21","chr22","chrX","chrY"))
+input_manhattan <- data.frame(chr_vect, df_manhattan$pos, df_manhattan$BH_p)
+colnames(input_manhattan) <- c('chr','pos','BH_pval')
+str(input_manhattan)
+```
+Finally I can obtain the Manhattan plot
+
+```{r}
 palette <- rainbow(24)
-mhtplot(input_Manhattan,control=mht.control(colors=palette))
+mhtplot(input_Manhattan,control=mht.control(colors=palette),ylim=c(0,3))
+axis(2,cex=0.5)
+abline(a=-log10(0.05),b=0)
 ```
+We can see how all the probes have a corrected p-value much below the significance threshold, and there are no significant differences across chromosomes.
+We can also notice the binned distribution of the Mann-Whithney p-values.
+
+Just for completeness, here I repeat the volcano plot and the manhattan plot by using the t-test instead of the Mann-Whithney test.
 
 ## Optional task
 These are the instructions:
