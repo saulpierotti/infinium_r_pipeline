@@ -527,14 +527,14 @@ df_manhattan <- data.frame(rownames(complete_beta_p_df), complete_beta_p_df)
 colnames(df_manhattan)[1] <- 'Name'
 annotation <- getAnnotation(RGSet)
 colnames(annotation)
-df_manhattan <- merge(df_manhattan, annotation,by="Name")
-colnames(df_manhattan)
+complete_df_annotated <- merge(df_manhattan, annotation,by="Name")
+colnames(complete_df_annotated)
 ```
 Now I extract only the columns needed for obtaining the Manhattan plot (chromosome, position, BH p-value). I also rename the columns for clarity and order the levels according to the chromosome number.
 
 ```{r}
-chr_vect <- factor(df_manhattan$chr,levels=c("chr1","chr2","chr3","chr4","chr5","chr6","chr7","chr8","chr9","chr10","chr11","chr12","chr13","chr14","chr15","chr16","chr17","chr18","chr19","chr20","chr21","chr22","chrX","chrY"))
-input_manhattan <- data.frame(chr_vect, df_manhattan$pos, df_manhattan$BH_p)
+chr_vect <- factor(complete_df_annotated$chr,levels=c("chr1","chr2","chr3","chr4","chr5","chr6","chr7","chr8","chr9","chr10","chr11","chr12","chr13","chr14","chr15","chr16","chr17","chr18","chr19","chr20","chr21","chr22","chrX","chrY"))
+input_manhattan <- data.frame(chr_vect, complete_df_annotated$pos, complete_df_annotated$BH_p)
 colnames(input_manhattan) <- c('chr','pos','BH_pval')
 str(input_manhattan)
 ```
@@ -542,18 +542,32 @@ Finally I can obtain the Manhattan plot
 
 ```{r}
 palette <- rainbow(24)
-mhtplot(input_Manhattan,control=mht.control(colors=palette),ylim=c(0,3))
+mhtplot(input_manhattan,control=mht.control(colors=palette),ylim=c(0,3))
 axis(2,cex=0.5)
 abline(a=-log10(0.05),b=0)
 ```
 We can see how all the probes have a corrected p-value much below the significance threshold, and there are no significant differences across chromosomes.
 We can also notice the binned distribution of the Mann-Whithney p-values.
 
-Just for completeness, here I repeat the volcano plot and the manhattan plot by using the t-test instead of the Mann-Whithney test.
-
-## Optional task
+# Optional task
 These are the instructions:
 > As DS is caused by the trisomy of chromosome 21, try also to plot the
 density  of  the  methylation  values  of  the  probes  mapping  on
 chromosome 21. Do you see a very clear difference between the
 samples? How many differentially methylated probes do you find on chromosome 21?
+
+First I extract the rows relative to probes belonging to chromosome 21 from the complete dataset prepared in step 12 and I subset it according to the group of the samples.
+
+```{r}
+chr21_complete <- complete_df_annotated[complete_df_annotated$chr=='chr21',]
+chr21_beta <- chr21_complete[,2:9]
+chr21_beta_WT <- chr21_beta[,groups=='WT']
+chr21_beta_DS <- chr21_beta[,groups=='DS']
+dim(chr21_beta_DS)
+dim(chr21_beta_WT)
+```
+
+Now I calculate the mean intesity of each probe in each of the sample groups, and the density of mean intensities.
+
+```{r}
+```
