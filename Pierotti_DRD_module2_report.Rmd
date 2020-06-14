@@ -430,7 +430,7 @@ For doing multiple test correction, I will use the `p.adjust` function, specifyi
 I will apply it to the sorted raw p-values sliced from the data frame of step 9.
 
 ```{r}
-raw_p_sorted <- beta_rawp_df[,9]
+raw_p_sorted <- beta_rawp_df_sorted[,9]
 summary(raw_p_sorted)
 BH_p <- p.adjust(raw_p_sorted,"BH")
 summary(BH_p)
@@ -455,15 +455,8 @@ There are no significant probes after multiple test correction.
 I can create a data frame including the beta values, raw p-values and corrected p-values for all the probes.
 
 ```{r}
-
-```
-
-A total of 29388 probes have a p-value lower than 0.05 without multiple test correction, while there are no significant probes after either Bonferroni or BH correction.
-I will also add the multiple-testing-corrected p-values to the beta values and p-values data frame.
-
-```{r}
-final_mwtest <- data.frame(beta_norm, pval_mw, corrected_pValues_BH, corrected_pValues_Bonf)
-final_mwtest_ordered <- final_mwtest[order(final_mwtest$pval_mw),]
+complete_beta_p_df <- data.frame(beta_rawp_df_sorted, BH_p, Bonf_p)
+boxplot(complete_beta_p_df[,9:11])
 ```
 
 # Step 11
@@ -471,22 +464,14 @@ These are the instructions:
 > Produce  an  heatmap  of  the  top  100  differentially  mehtylated
 probes.
 
-I will use the function `heatmap.2` to produce an heatmap of the top 100 differentially methylated probes.
-Since this is not specified in the instructions, I will use raw p-value as a measure of differential methylation.
-I first create a single dataframe with beta values, raw p-values and corrected p-values for each probe and I sort it according to the raw p-value.
+I will use the function `heatmap.2` to produce an heatmap of the top 100 differentially methylated probes (according to raw p-value).
+I first produce an input matrix for the heatmap from the top 100 values of the sorted data frame from step 10.
+I also slice the data frame so to exclude p-values and retain only beta-values.
 
 
 ```{r}
-final_mwtest <- data.frame(beta_norm, pval_mw, corrected_pValues_BH, corrected_pValues_Bonf)
-final_mwtest_ordered <- final_mwtest[order(final_mwtest$pval_mw),]
-```
-
-Now I produce an input matrix for the heatmap from the top 100 values of the dataframe.
-I subset the dataframe so to exclude p-values from the heatmap and to limit the heatmap to the top 100 probes.
-
-
-```{r}
-input_heatmap <- as.matrix(final_mwtest_ordered[1:100,1:8])
+input_heatmap <- as.matrix(complete_beta_p_df[1:100,1:8])
+summary(input_heatmap)
 ```
 
 I will now produce the heatmap from these top 100 probes, coloring the samples according to the group to which they belong (DS or WT).
@@ -496,12 +481,12 @@ I leave the default parameters for clustering (euclidean distance and complete l
 ```{r}
 DS_col <- 'orange'
 WT_col <- 'green'
-groups
 colorbar <- c(DS_col, DS_col, WT_col, WT_col, WT_col, DS_col, DS_col, WT_col)
 heatmap.2(input_heatmap,col=terrain.colors(100),Rowv=T,Colv=T,dendrogram="both",key=T,ColSideColors=colorbar,density.info="none",trace="none",scale="none",symm=F)
 ```
 
 From the heatmap we notice how the 2 sample groups are well clustered according to the methylation status of the top 100 probes.
+Some probes are more methylated in one of the groups, other probes in the other.
 
 ## Step 12
 These are the instructions:
