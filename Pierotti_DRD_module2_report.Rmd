@@ -23,12 +23,12 @@ The student specific parameters to be used for the report (as detailed in the as
 I first clean the workspace and then load the required libraries. I do not set the working directory since I will give full paths relative to the directory in which this notebook is run.
 
 
-```{r, message=FALSE, warning=FALSE, include=FALSE}
+```{r, message=FALSE, warning=FALSE}
 rm(list=ls())
 ```
 
 
-```{r, message=FALSE, warning=FALSE, include=FALSE}
+```{r, message=FALSE, warning=FALSE}
 require('minfi')
 require(IlluminaHumanMethylation450kmanifest)
 require(gplots)
@@ -40,14 +40,14 @@ data_dir <- './Input_data'
 I load the sample sheet of the experiment using the minfi `read.metharray.sheet` function.
 
 
-```{r, message=FALSE, warning=FALSE, include=FALSE}
+```{r, message=FALSE, warning=FALSE}
 targets <- read.metharray.sheet(data_dir)
 ```
 
 Now I load the raw experimental data relative to the sample sheet and I create the RGChannelSet object using the `read.metharray.exp` function.
 
 
-```{r, message=FALSE, warning=FALSE, include=FALSE}
+```{r, message=FALSE, warning=FALSE}
 RGSet <- suppressWarnings(read.metharray.exp(base='./Input_data',targets = targets))
 dim(RGSet)
 ```
@@ -59,7 +59,7 @@ I use the `getGreen` and `getRed` functions on the RGSet for extracting data fro
 These data are then converted to 2 data frames of the same dimensionality (8\*622399, 8 samples and 622399 probe addresses).
 
 
-```{r, message=FALSE, warning=FALSE, include=FALSE}
+```{r, message=FALSE, warning=FALSE}
 Red <- data.frame(getRed(RGSet))
 Green <- data.frame(getGreen(RGSet))
 dim(Red)
@@ -74,21 +74,21 @@ The student-specific probe address assigned for this step is `59625465`.
 First I note down which array and slide refers to which sample by reading the sample sheet.
 
 
-```{r, message=FALSE, warning=FALSE, include=FALSE}
+```{r, message=FALSE, warning=FALSE}
 targets
 ```
 
 Then I extract the red and green intensities for the assigned probe by slicing the respective data frames (Red and Green).
 
 
-```{r, message=FALSE, warning=FALSE, include=FALSE}
+```{r, message=FALSE, warning=FALSE}
 Red[rownames(Red)=="59625465",]
 Green[rownames(Green)=="59625465",]
 ```
 
 Now I load the manifest for the Illumina 450k Infinium array with the `getProbeInfo` function and check what is the chemistry of the assigned probe.
 
-```{r, message=FALSE, warning=FALSE, include=FALSE}
+```{r, message=FALSE, warning=FALSE}
 probe_info_I <- getProbeInfo(RGSet, type = 'I')
 probe_info_II <- getProbeInfo(RGSet, type = 'II')
 probe_info_I[probe_info_I$AddressA==59625465,]
@@ -117,7 +117,7 @@ With all of these pieces of information I can complete the table as assigned (I 
 I use the `preprocessRaw` function on the RGSet to get the raw MSet.
 
 
-```{r, message=FALSE, warning=FALSE, include=FALSE}
+```{r, message=FALSE, warning=FALSE}
 MSet.raw <- preprocessRaw(RGSet)
 dim(MSet.raw)
 ```
@@ -131,7 +131,7 @@ dim(MSet.raw)
 I first create a QC plot by getting the medians of the methylated and unmethylated channels for each sample with the `getQC` function and plotting them with the `plotQC` function.
 
 
-```{r, message=FALSE, warning=FALSE, include=FALSE}
+```{r, message=FALSE, warning=FALSE}
 qc <- getQC(MSet.raw)
 plotQC(qc)
 ```
@@ -140,7 +140,7 @@ Since all the samples have high median methylated and unmethylated signals, I ca
 Now I plot the negative control probe intensities of the RGSet using the `controlStripPlot` function.
 
 
-```{r, message=FALSE, warning=FALSE, include=FALSE}
+```{r, message=FALSE, warning=FALSE}
 controlStripPlot(RGSet, controls="NEGATIVE")
 ```
 
@@ -152,7 +152,7 @@ Now I will determine the detection p-values for the probes using the `detectionP
 I will consider as failed the probes with a detection p-value higher than the assigned student-specific threshold of 0.01.
 
 
-```{r, message=FALSE, warning=FALSE, include=FALSE}
+```{r, message=FALSE, warning=FALSE}
 detP <- detectionP(RGSet)
 dim(detP)
 failed <- detP>0.01
@@ -174,14 +174,14 @@ The following number of probes has a p-value higher than the threshold for each 
 
 Even if not specified in the assignment, it can be useful to look for the percentages of failed probes in each sample.
 
-```{r, message=FALSE, warning=FALSE, include=FALSE}
+```{r, message=FALSE, warning=FALSE}
 sample_failed_probes_percentage <- colMeans(failed)
 sample_failed_probes_percentage
 ```
 All the samples seem to show an acceptable amount of failed probes.
 I can also check for probes that failed (according to the aforementioned criterion) on more than 1% of the samples (also this was not required in the assignment).
 
-```{r, message=FALSE, warning=FALSE, include=FALSE}
+```{r, message=FALSE, warning=FALSE}
 mean_failure_probes <- rowMeans(failed)
 probes_to_be_retained <- mean_failure_probes<0.01
 summary(probes_to_be_retained)
@@ -197,7 +197,7 @@ I will save their name in a vector to eventually filter them out later, but I wi
 I first extract the beta and M values from the MSet.raw using the `getBeta` and `getM` functions.
 
 
-```{r, message=FALSE, warning=FALSE, include=FALSE}
+```{r, message=FALSE, warning=FALSE}
 beta <- getBeta(MSet.raw)
 summary(beta)
 M <- getM(MSet.raw)
@@ -207,7 +207,7 @@ summary(M)
 Now I subset the beta and M value matrices on the basis of the group (DS or WT) of the sample.
 
 
-```{r, message=FALSE, warning=FALSE, include=FALSE}
+```{r, message=FALSE, warning=FALSE}
 isDS <- targets$Group=='DS'
 summary(isDS)
 beta_DS <- beta[,isDS]
@@ -220,7 +220,7 @@ Now I calculate the mean beta and M values for each queried position across the 
 I need to discard NA values since, where both the methylated and unmethilated signals are 0, the beta and M values are not defined.
 
 
-```{r, message=FALSE, warning=FALSE, include=FALSE}
+```{r, message=FALSE, warning=FALSE}
 beta_DS_mean <- apply(beta_DS,MARGIN=1,mean,na.rm=T)
 beta_WT_mean <- apply(beta_WT,MARGIN=1,mean,na.rm=T)
 M_DS_mean <- apply(M_DS,MARGIN=1,mean,na.rm=T)
@@ -230,7 +230,7 @@ M_WT_mean <- apply(M_WT,MARGIN=1,mean,na.rm=T)
 Now I can calculate the density distribution of all of these means and plot them.
 
 
-```{r, message=FALSE, warning=FALSE, include=FALSE}
+```{r, message=FALSE, warning=FALSE}
 beta_DS_mean_d <- density(beta_DS_mean)
 beta_WT_mean_d <- density(beta_WT_mean)
 M_DS_mean_d <- density(M_DS_mean)
@@ -238,7 +238,7 @@ M_WT_mean_d <- density(M_WT_mean)
 ```
 
 
-```{r, message=FALSE, warning=FALSE, include=FALSE}
+```{r, message=FALSE, warning=FALSE}
 par(mfrow=c(1,2))
 plot(beta_DS_mean_d,main="Density of Beta Values",col="red")
 lines(beta_WT_mean_d,main="Density of Beta Values",col="blue")
@@ -257,7 +257,7 @@ We can see how in the 2 sample groups both beta and M values tend to have a very
 I first extract the type I and type II probe names from the manifest of the array and use them to subset the beta values matrix.
 
 
-```{r, message=FALSE, warning=FALSE, include=FALSE}
+```{r, message=FALSE, warning=FALSE}
 type_I <- getProbeInfo(MSet.raw, type = 'I')$Name
 type_II <- getProbeInfo(MSet.raw, type = 'II')$Name
 beta_I <- beta[rownames(beta) %in% type_I,]
@@ -269,7 +269,7 @@ dim(beta_II)
 I then calculate mean and standard deviation densities for type I and type II probes.
 
 
-```{r, message=FALSE, warning=FALSE, include=FALSE}
+```{r, message=FALSE, warning=FALSE}
 mean_beta_I <- apply(beta_I,1,mean,na.rm=T)
 mean_beta_II <- apply(beta_II,1,mean,na.rm=T)
 d_mean_beta_I <- density(mean_beta_I)
@@ -284,7 +284,7 @@ I normalize (between-array) the RGSet using the function assigned (`preprocessFu
 This will produce a GenomicRatioSet object.
 
 
-```{r, message=FALSE, warning=FALSE, include=FALSE}
+```{r, message=FALSE, warning=FALSE}
 normalized_data <- preprocessFunnorm(RGSet)
 normalized_data
 ```
@@ -293,7 +293,7 @@ I can now extract the normalized beta values using the `getBeta` function and th
 I also calculate mean and standard deviation densities as before.
 
 
-```{r, message=FALSE, warning=FALSE, include=FALSE}
+```{r, message=FALSE, warning=FALSE}
 beta_norm <- getBeta(normalized_data)
 beta_I_norm <- beta[rownames(beta_norm) %in% type_I,]
 beta_II_norm <- beta[rownames(beta_norm) %in% type_II,]
@@ -312,7 +312,7 @@ I also produce a box plot of the beta values across samples for the raw and norm
 I set the axes limits so to make the plots easier to compare.
 
 
-```{r, message=FALSE, warning=FALSE, include=FALSE}
+```{r, message=FALSE, warning=FALSE}
 par(mfrow=c(2,3))
 plot(d_mean_beta_I,col="blue",main="raw beta",xlim=c(0,1),ylim=c(0,5))
 lines(d_mean_beta_II,col="red")
@@ -339,7 +339,7 @@ I want now to apply the `prcomp` function on the normalized beta values matrix o
 The beta values matrix has one column per sample and one probe per row, and because of this it must be transposed before applying the PCA (`t` function).
 
 
-```{r, message=FALSE, warning=FALSE, include=FALSE}
+```{r, message=FALSE, warning=FALSE}
 pca_results <- prcomp(t(beta_norm),scale=T)
 summary(pca_results)
 plot(pca_results)
@@ -352,7 +352,7 @@ I can plot the first 2 to components to see if the DS and WT groups are separate
 I can also color the same plot according to the array used, to spot batch effects.
 
 
-```{r, message=FALSE, warning=FALSE, include=FALSE}
+```{r, message=FALSE, warning=FALSE}
 palette("default")
 groups <- factor(targets$Group)
 plot(pca_results$x[,1], pca_results$x[,2],pch=16,col=groups,xlab="PC1",ylab="PC2")
@@ -362,7 +362,7 @@ legend("bottomright",legend=levels(groups),col=c(1:nlevels(groups)),pch=16)
 I can color the same plot according to the array used, to spot batch effects.
 
 
-```{r, message=FALSE, warning=FALSE, include=FALSE}
+```{r, message=FALSE, warning=FALSE}
 slides <- factor(targets$Slide)
 plot(pca_results$x[,1], pca_results$x[,2],pch=16,col=slides,xlab="PC1",ylab="PC2")
 legend("bottomright",legend=levels(slides),col=c(1:nlevels(slides)),pch=16)
@@ -385,7 +385,7 @@ I apply it to the normalized beta values from step 7, using DS and WT as sample 
 I need to define a function so to apply the test to each probe.
 
 
-```{r, message=FALSE, warning=FALSE, include=FALSE}
+```{r, message=FALSE, warning=FALSE}
 mann_whitney_all_rows <- function(x) {
   wilcox <- wilcox.test(x~ targets$Group)
   #wilcox <- wilcox.test(x~ groups)
@@ -398,7 +398,7 @@ length(pval_raw)
 ```
 I create then a data frame containing the beta values and the raw p-values for each probe and sort it from smallest to largest p-value.
 
-```{r, message=FALSE, warning=FALSE, include=FALSE}
+```{r, message=FALSE, warning=FALSE}
 beta_rawp_df <- data.frame(beta_norm, pval_raw)
 beta_rawp_df_sorted <- beta_rawp_df[order(beta_rawp_df$pval_raw),]
 summary(beta_rawp_df_sorted)
@@ -413,7 +413,7 @@ summary(beta_rawp_df_sorted)
 For doing multiple test correction, I will use the `p.adjust` function, specifying which correction I want to use (BH and Bonferroni).
 I will apply it to the sorted raw p-values sliced from the data frame of step 9.
 
-```{r, message=FALSE, warning=FALSE, include=FALSE}
+```{r, message=FALSE, warning=FALSE}
 raw_p_sorted <- beta_rawp_df_sorted[,9]
 summary(raw_p_sorted)
 BH_p <- p.adjust(raw_p_sorted,"BH")
@@ -425,7 +425,7 @@ We can note how the Bonferroni correction is too stringent, bringing all the p-v
 Also with the BH correction the smallest p-value is only 0.47, so definitively not significant.
 I can now count how many probes have a p-value below the threshold of 0.05.
 
-```{r, message=FALSE, warning=FALSE, include=FALSE}
+```{r, message=FALSE, warning=FALSE}
 diff_met_raw_p <- raw_p_sorted[raw_p_sorted<=0.05]
 length(diff_met_raw_p)
 summary(diff_met_raw_p)
@@ -439,7 +439,7 @@ There are no significant probes after multiple test correction.
 I can create a data frame including the beta values, raw p-values and corrected p-values for all the probes.
 I will also create a boxplot of the raw and corrected p-values so to look at their distribution.
 
-```{r, message=FALSE, warning=FALSE, include=FALSE}
+```{r, message=FALSE, warning=FALSE}
 complete_beta_p_df <- data.frame(beta_rawp_df_sorted, BH_p, Bonf_p)
 boxplot(complete_beta_p_df[,9:11])
 ```
@@ -453,7 +453,7 @@ I first produce an input matrix for the heatmap from the top 100 values of the s
 I also slice the data frame so to exclude p-values and retain only beta-values.
 
 
-```{r, message=FALSE, warning=FALSE, include=FALSE}
+```{r, message=FALSE, warning=FALSE}
 input_heatmap <- as.matrix(complete_beta_p_df[1:100,1:8])
 summary(input_heatmap)
 ```
@@ -462,7 +462,7 @@ I will now produce the heatmap from these top 100 probes, coloring the samples a
 I leave the default parameters for clustering (euclidean distance and complete linkage).
 
 
-```{r, message=FALSE, warning=FALSE, include=FALSE}
+```{r, message=FALSE, warning=FALSE}
 DS_col <- 'orange'
 WT_col <- 'green'
 colorbar <- c(DS_col, DS_col, WT_col, WT_col, WT_col, DS_col, DS_col, WT_col)
@@ -474,17 +474,17 @@ From the heatmap we notice how the 2 sample groups are well clustered according 
 Some probes are more methylated in one of the groups, other probes in the other.
 I can repeat the heatmap using single and average linkage.
 
-```{r, message=FALSE, warning=FALSE, include=FALSE}
+```{r, message=FALSE, warning=FALSE}
 heatmap.2(input_heatmap,col=terrain.colors(100),Rowv=T,Colv=T,hclustfun = function(x) hclust(x,method = 'single'),dendrogram="both",key=T,ColSideColors=colorbar,density.info="none",trace="none",scale="none",symm=F)
 ```
-```{r, message=FALSE, warning=FALSE, include=FALSE}
+```{r, message=FALSE, warning=FALSE}
 heatmap.2(input_heatmap,col=terrain.colors(100),Rowv=T,Colv=T,hclustfun = function(x) hclust(x,method = 'average'),dendrogram="both",key=T,ColSideColors=colorbar,density.info="none",trace="none",scale="none",symm=F)
 ```
 I will also try to use Pearson and Spearman correlation as a distance metric, instead of euclidean distance.
-```{r, message=FALSE, warning=FALSE, include=FALSE}
+```{r, message=FALSE, warning=FALSE}
 heatmap.2(input_heatmap,col=terrain.colors(100),Rowv=T,Colv=T,distfun = function(x) Dist(x, method="pearson"),dendrogram="both",key=T,ColSideColors=colorbar,density.info="none",trace="none",scale="none",symm=F)
 ```
-```{r, message=FALSE, warning=FALSE, include=FALSE}
+```{r, message=FALSE, warning=FALSE}
 heatmap.2(input_heatmap,col=terrain.colors(100),Rowv=T,Colv=T,distfun = function(x) Dist(x, method="spearman"),dendrogram="both",key=T,ColSideColors=colorbar,density.info="none",trace="none",scale="none",symm=F)
 ```
 
@@ -496,7 +496,7 @@ Since this is not specified in the assignment, I will use the normalized beta va
 Here I calculate the mean beta values for each probe in each sample group and their difference (across the 2 sample groups).
 
 
-```{r, message=FALSE, warning=FALSE, include=FALSE}
+```{r, message=FALSE, warning=FALSE}
 beta_norm_sorted <- complete_beta_p_df[,1:8]
 beta_norm_sorted_DS <- beta_norm_sorted[,groups=="DS"]
 beta_norm_sorted_WT <- beta_norm_sorted[,groups=="WT"]
@@ -510,7 +510,7 @@ At this point `delta` contains the differential mean beta values between sample 
 I can now plot the delta against the -log10 of the BH-corrected p-values.
 
 
-```{r, message=FALSE, warning=FALSE, include=FALSE}
+```{r, message=FALSE, warning=FALSE}
 neg_log10_p_BH <- -log10(complete_beta_p_df[,10])
 plot(delta, neg_log10_p_BH,ylim=c(0,3),pch='.')
 abline(a=-log10(0.05),b=0,col="red")
@@ -520,7 +520,7 @@ We can see how the p-values are binned at discrete levels (a consequence of the 
 For obtaining the Manhattan plot, I first merge the dataframe containing the p-values for each probe with the annotation of the probes, using the `merge` function and merging according to probe name.
 
 
-```{r, message=FALSE, warning=FALSE, include=FALSE}
+```{r, message=FALSE, warning=FALSE}
 df_manhattan <- data.frame(rownames(complete_beta_p_df), complete_beta_p_df)
 colnames(df_manhattan)[1] <- 'Name'
 annotation <- getAnnotation(RGSet)
@@ -530,7 +530,7 @@ colnames(complete_df_annotated)
 ```
 Now I extract only the columns needed for obtaining the Manhattan plot (chromosome, position, BH p-value). I also rename the columns for clarity and order the levels according to the chromosome number.
 
-```{r, message=FALSE, warning=FALSE, include=FALSE}
+```{r, message=FALSE, warning=FALSE}
 chr_vect <- factor(complete_df_annotated$chr,levels=c("chr1","chr2","chr3","chr4","chr5","chr6","chr7","chr8","chr9","chr10","chr11","chr12","chr13","chr14","chr15","chr16","chr17","chr18","chr19","chr20","chr21","chr22","chrX","chrY"))
 input_manhattan <- data.frame(chr_vect, complete_df_annotated$pos, complete_df_annotated$BH_p)
 colnames(input_manhattan) <- c('chr','pos','BH_pval')
@@ -538,7 +538,7 @@ str(input_manhattan)
 ```
 Finally I can obtain the Manhattan plot
 
-```{r, message=FALSE, warning=FALSE, include=FALSE}
+```{r, message=FALSE, warning=FALSE}
 palette <- rainbow(24)
 mhtplot(input_manhattan,control=mht.control(colors=palette),ylim=c(0,3),pch=16)
 axis(2,cex=0.5)
@@ -552,7 +552,7 @@ I suspect that this is due to the use of a non-parametric test (Mann-Whithney U 
 To test this hypothesis I will here repeat the analysis by using a Welch test and without changin the normalization procedure.
 
 The code for the Welch test:
-```{r, message=FALSE, warning=FALSE, include=FALSE}
+```{r, message=FALSE, warning=FALSE}
 t_test_all_rows <- function(x) {
   t_val <- t.test(x~ targets$Group)
   return(t_val$p.value)
@@ -564,7 +564,7 @@ length(pval_raw_t)
 ```
 
 The code for obtaining the joined dataset and for multiple testing correction:
-```{r, message=FALSE, warning=FALSE, include=FALSE}
+```{r, message=FALSE, warning=FALSE}
 beta_rawp_df_t <- data.frame(beta_norm, pval_raw_t)
 beta_rawp_df_sorted_t <- beta_rawp_df_t[order(beta_rawp_df_t$pval_raw_t),]
 summary(beta_rawp_df_sorted_t)
@@ -578,7 +578,7 @@ complete_beta_p_df_t <- data.frame(beta_rawp_df_sorted_t, BH_p_t, Bonf_p_t)
 ```
 
 The code for the volcano plot:
-```{r, message=FALSE, warning=FALSE, include=FALSE}
+```{r, message=FALSE, warning=FALSE}
 beta_norm_sorted_t <- complete_beta_p_df_t[,1:8]
 beta_norm_sorted_DS_t <- beta_norm_sorted_t[,groups=="DS"]
 beta_norm_sorted_WT_t <- beta_norm_sorted_t[,groups=="WT"]
@@ -592,7 +592,7 @@ abline(a=-log10(0.05),b=0,col="red")
 ```
 
 The code for the Manhattan plot:
-```{r, message=FALSE, warning=FALSE, include=FALSE}
+```{r, message=FALSE, warning=FALSE}
 df_manhattan_t <- data.frame(rownames(complete_beta_p_df_t), complete_beta_p_df_t)
 colnames(df_manhattan_t)[1] <- 'Name'
 annotation <- getAnnotation(RGSet)
@@ -618,7 +618,7 @@ Now the volcano and Manhattan plots look more familiar.
 
 First I extract the rows relative to probes belonging to chromosome 21 from the complete dataset prepared in step 12 and I subset it according to the group of the samples.
 
-```{r, message=FALSE, warning=FALSE, include=FALSE}
+```{r, message=FALSE, warning=FALSE}
 chr21_complete <- complete_df_annotated[complete_df_annotated$chr=='chr21',]
 chr21_beta <- chr21_complete[,2:9]
 chr21_beta_WT <- chr21_beta[,groups=='WT']
@@ -629,7 +629,7 @@ dim(chr21_beta_WT)
 
 Now I calculate the mean beta values of each probe in each of the sample groups, and the density of mean beta values.
 
-```{r, message=FALSE, warning=FALSE, include=FALSE}
+```{r, message=FALSE, warning=FALSE}
 chr21_beta_DS_mean <- apply(chr21_beta_DS,MARGIN=1,mean,na.rm=T)
 chr21_beta_WT_mean <- apply(chr21_beta_WT,MARGIN=1,mean,na.rm=T)
 d_mean_chr21_beta_DS <- density(chr21_beta_DS_mean)
@@ -638,7 +638,7 @@ d_mean_chr21_beta_WT <- density(chr21_beta_WT_mean)
 
 Finally I plot the densities of mean beta values differentiated by sample group, only for probes on chromosome 21.
 
-```{r, message=FALSE, warning=FALSE, include=FALSE}
+```{r, message=FALSE, warning=FALSE}
 plot(d_mean_chr21_beta_DS,main="Density of Beta Values",col="red")
 lines(d_mean_chr21_beta_WT,main="Density of Beta Values",col="blue")
 ```
@@ -647,7 +647,7 @@ Now I want to evaluate how many probes are differentially methylated on chromoso
 I will just extract this information from the complete data frame obtained in the previous steps.
 I will use raw p-values here.
 
-```{r, message=FALSE, warning=FALSE, include=FALSE}
+```{r, message=FALSE, warning=FALSE}
 diff_met_chr21 <- chr21_complete[chr21_complete$pval_raw<=0.05,]
 dim(diff_met_chr21)
 ```
