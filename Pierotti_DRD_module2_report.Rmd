@@ -347,7 +347,7 @@ These are the instructions:
 plot.
 
 I want now to apply the `prcomp` function on the normalized beta values matrix obtained in step 7 in order to perform a PCA on it.
-The beta values matrix has one column per sample and one probe per row, and because of this it must be trasposed before applying the PCA (`t` function).
+The beta values matrix has one column per sample and one probe per row, and because of this it must be transposed before applying the PCA (`t` function).
 
 
 ```{r}
@@ -357,16 +357,17 @@ plot(pca_results)
 ```
 
 In the screw plot, it seems that the variance is quite uniformly distributed among the first 7 components.
-The 8th component contains really limited variance, and so the first 7 PC can explain almost all of the variability of the dataset.
+The 8th component contains really limited variance, and so the first 7 components can explain almost all of the variability of the dataset.
 This may mean that the samples differ sensibly on more than a few orthogonal axes.
-I can plot the first 2 to principal componets to see if the DS and WT groups are separated according to those dimensions.
+I can plot the first 2 to components to see if the DS and WT groups are separated according to those dimensions.
+I can also color the same plot according to the array used, to spot batch effects.
 
 
 ```{r}
 palette("default")
-groups <- factor(targets$Group) # extract the group labels as factors
-plot(pca_results$x[,1], pca_results$x[,2],cex=2,pch=2,col=groups,xlab="PC1",ylab="PC2") # make the plot and name the axes
-legend("bottomright",legend=levels(groups),col=c(1:nlevels(groups)),pch=2) # add the legend
+groups <- factor(targets$Group)
+plot(pca_results$x[,1], pca_results$x[,2],cex=2,pch=2,col=groups,xlab="PC1",ylab="PC2")
+legend("bottomright",legend=levels(groups),col=c(1:nlevels(groups)),pch=2)
 ```
 
 I can color the same plot according to the array used, to spot batch effects.
@@ -374,18 +375,19 @@ I can color the same plot according to the array used, to spot batch effects.
 
 ```{r}
 slides <- factor(targets$Slide)
-plot(pca_results$x[,1], pca_results$x[,2],cex=2,pch=2,col=slides,xlab="PC1",ylab="PC2") # make the plot and name the axes
-legend("bottomright",legend=levels(slides),col=c(1:nlevels(slides)),pch=2) # add the legend
+plot(pca_results$x[,1], pca_results$x[,2],cex=2,pch=2,col=slides,xlab="PC1",ylab="PC2")
+legend("bottomright",legend=levels(slides),col=c(1:nlevels(slides)),pch=2)
 ```
 
 From these plots I can see how the 2 groups (DS and WT) seem distinct according to the first 2 principal components.
 A line of the type y=x seem to well separate the 2 groups.
 DS seems confined to a region where PC1>PC2, while WT is confined in a region where PC2>PC1.
-On the contrary, the systematic differences among slides seem to be due more to the belonging of samples run in the same slide to different groups.
-Slide 5930514035, which contains a sample from the DS and a sample from the WT group, still respects the pattern of separation between sample groups.
-Randomization of the samples on the slides could have been used to allow to test for batch effects separately from sample groups.
+The samples seem to be highly clustered according to the slide in which they were run (presumably due to batch effects).
+However, slide 5930514035, which contains a sample from the DS and a sample from the WT group, still respects the pattern of separation between sample groups.
+Randomization of the samples on the slides would have been advisable to allow to test for batch effects separately from sample groups.
+There seem to be no outliers among the samples.
 
-## Step 9
+# Step 9
 These are the instructions:
 > Using the matrix of normalized beta values generated in step 7,
 identify  differentially  methylated  probes  between  group  DS  and
@@ -400,38 +402,71 @@ I need to define a function so to apply the test to each probe.
 
 ```{r}
 mann_whitney_all_rows <- function(x) {
-  wilcox <- wilcox.test(x~ groups)
+  wilcox <- wilcox.test(x~ targets$Group)
+  #wilcox <- wilcox.test(x~ groups)
   return(wilcox$p.value)
 }
 
 pval_mw <- apply(beta_norm,1, mann_whitney_all_rows)
+summary(pval_mw)
+length(pval_mw)
+```
+I create then a data frame containing the beta values and the raw p-values for each probe and sort it from smallest to largest p-value.
+
+```{r}
+beta_rawp_df <- data.frame(beta_norm, pval_mw)
+beta_rawp_df_sorted <- beta_rawp_df[order(beta_rawp_df$pval_mw),]
+summary(beta_rawp_df_sorted)
 ```
 
-## Step 10
-These are the instructpval_mw:
+# Step 10
+These are the instructions:
 > Apply multiple test correction and set a significant threshold of
 0.05. How many probes do you identify as differentially methylated
 considering nominal pValues? How many after Bonferroni correction?
 How many after BH correction?
 
 For doing multiple test correction, I will use the `p.adjust` function, specifying which correction I want to use (BH and Bonferroni).
-
-
+I will apply it to the sorted raw p-values sliced from the data frame of step 9.
 
 ```{r}
-diff_met_probes_raw <- pval_mw[pval_mw<=0.05]
-corrected_pValues_BH <- p.adjust(pval_mw,"BH")
-corrected_pValues_Bonf <- p.adjust(pval_mw,"bonferroni")
-diff_met_probes_BH <- corrected_pValues_BH[corrected_pValues_BH<=0.05]
-diff_met_probes_Bonf <- corrected_pValues_Bonf[corrected_pValues_Bonf<=0.05]
-length(diff_met_probes_raw)
-length(diff_met_probes_BH)
-length(diff_met_probes_Bonf)
+raw_p_sorted <- beta_rawp_df[,9]
+summary(raw_p_sorted)
+BH_p <- p.adjust(raw_p_sorted,"BH")
+summary(BH_p)
+Bonf_p <- p.adjust(raw_p_sorted,"bonferroni")
+summary(Bonf_p)
+```
+We can note how the Bonferroni correction is too stringent, bringing all the p-values to 1.
+Also with the BH correction the smallest p-value is only 0.47, so definitively not significant.
+I can now count how many probes have a p-value below the threshold of 0.05.
+
+```{r}
+diff_met_raw_p <- raw_p_sorted[raw_p_sorted<=0.05]
+length(diff_met_raw_p)
+summary(diff_met_raw_p)
+diff_met_BH <- BH_p[BH_p<=0.05]
+length(diff_met_BH)
+diff_met_Bonf <- Bonf_p[Bonf_p<=0.05]
+length(diff_met_Bonf)
+```
+There are no significant probes after multiple test correction.
+29388 probes have a raw p-value under 0.05.
+I can create a data frame including the beta values, raw p-values and corrected p-values for all the probes.
+
+```{r}
+
 ```
 
-A total of 29388 probes have a p-value lower than 0.05 without multiple test correction, while there are no significant probes after Bonferroni and BH correction.
+A total of 29388 probes have a p-value lower than 0.05 without multiple test correction, while there are no significant probes after either Bonferroni or BH correction.
+I will also add the multiple-testing-corrected p-values to the beta values and p-values data frame.
 
-## Step 11
+```{r}
+final_mwtest <- data.frame(beta_norm, pval_mw, corrected_pValues_BH, corrected_pValues_Bonf)
+final_mwtest_ordered <- final_mwtest[order(final_mwtest$pval_mw),]
+```
+
+# Step 11
 These are the instructions:
 > Produce  an  heatmap  of  the  top  100  differentially  mehtylated
 probes.
