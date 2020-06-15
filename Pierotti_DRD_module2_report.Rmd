@@ -29,11 +29,12 @@ rm(list = ls())
 ```
 
 ```{r, message=FALSE, warning=FALSE}
-require('minfi')
+require(minfi)
 require(IlluminaHumanMethylation450kmanifest)
 require(gplots)
 require(gap)
 require(amap)
+require(magick)
 data_dir <- './Input_data'
 ```
 
