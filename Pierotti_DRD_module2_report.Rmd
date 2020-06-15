@@ -6,7 +6,7 @@ output:
   html_document: default
   pdf_document:
     dev: png
-    dpi: 300
+dpi: 300
 knit: (function(inputFile, encoding) {
   rmarkdown::render(inputFile, encoding = encoding,
   output_dir = "output", output_format = "all") })
