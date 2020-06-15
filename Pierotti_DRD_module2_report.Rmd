@@ -2,9 +2,9 @@
 title: A pipeline in R for the analysis of Infinium methylation array data
 author: Saul Pierotti
 date: June 14, 2020
-output:
-  pdf_document:
-    dev: png
+output: pdf_document
+dev: png
+dpi: 300
 ---
 
 This report was initially written as a Jupyter notebook, then migrated to Rmarkdown for compatibility issues with some packages.
