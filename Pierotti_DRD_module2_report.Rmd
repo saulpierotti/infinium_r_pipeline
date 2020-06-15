@@ -2,7 +2,9 @@
 title: A pipeline in R for the analysis of Infinium methylation array data
 author: Saul Pierotti
 date: June 14, 2020
-output: pdf_document
+output:
+  pdf_document:
+    dev: png
 ---
 
 This report was initially written as a Jupyter notebook, then migrated to Rmarkdown for compatibility issues with some packages.
@@ -190,7 +192,7 @@ names_probes_to_be_removed <- names(probes_to_be_removed)
 I will save their name in a vector to eventually filter them out later, but I will retain them, for now, to avoid possible problems with processing due to missing probes.
 
 # Step 6
-> Calculate raw beta and M values and plot the densities of mean methylation values, dividing the samples in DS and WT (suggestion: subset the beta and M values matrixes to retain `DS` or `WT` subjects and apply the function mean to the 2 subsets). 
+> Calculate raw beta and M values and plot the densities of mean methylation values, dividing the samples in `DS` and `WT` (suggestion: subset the beta and M values matrixes to retain `DS` or `WT` subjects and apply the function mean to the 2 subsets). 
 
 I first extract the beta and M values from `MSet.raw` using the `getBeta` and `getM` functions.
 
@@ -241,6 +243,8 @@ lines(M_WT_mean_d, main = "Density of M Values", col = "blue")
 
 The red lines represent the `DS` samples beta and M values mean densities while the blue lines represent those of the `WT` samples.
 We can see how in the 2 sample groups both beta and M values tend to have a very similar distribution.
+It is noticeable the presence of a small sub-peak to the right of the main methylated peak both in the beta and M value graphs.
+This is probably due to the misalignment of type I and type II peaks in the raw data.
 
 # Step 7
 > Normalize the data using the function assigned to each student and compare raw data and normalized data.
@@ -340,7 +344,8 @@ lines(d_sd_beta_II_norm, col = "red")
 boxplot(beta_norm, ylim = c(0, 1))
 ```
 
-I can observe that the distribution of beta (in the boxplots) values is almost identical across samples for the normalized data, while it is more variable for the raw data. Only the median in the normalized data seems to differ slightly among samples.
+The blue lines refers to Infinium I probes, while the red lines refer to Infinium II probes.
+I can note in the boxplots how the distribution of beta values is almost identical across samples for the normalized data, while it is more variable for the raw data. Only the median in the normalized data seems to differ slightly among samples.
 The distribution of mean densities and standard deviation densities is almost equivalent among type I and II probes in the normalized data, while it is heavily different in the raw data. In the raw data, the density of standard deviations for type II probes tend to be shifted towards higher values compared to type I probes.
 The peaks on the mean density distribution for the type II probes are more shifted towards the center compared to type I probes in the raw data.
 All of these differences among chemistry types in the raw data are as expected: type II probes are more variable and they show a narrower range of beta values compared to type I probes.
@@ -360,9 +365,9 @@ summary(pca_results)
 plot(pca_results)
 ```
 
-In the screw plot, it seems that the variance is quite uniformly distributed among the first 7 components.
+In the scree plot, it seems that the variance is quite uniformly distributed among the first 7 components.
 The 8th component contains really limited variance, and so the first 7 components can explain almost all of the variability of the dataset.
-This may mean that the samples differ sensibly on more than a few orthogonal axes.
+The quite uniform distribution of variance among the first 7 components may mean that the samples differ sensibly on more than a couple of orthogonal axes.
 I can plot the first 2 to components to see if the `DS` and `WT` groups are separated according to those dimensions.
 
 ```{r, message=FALSE, warning=FALSE}
@@ -406,14 +411,14 @@ legend(
 
 From these plots, I can see how the 2 groups (`DS` and `WT`) seem distinct according to the first 2 principal components.
 A line of the type $y=x$ seems to well separate the 2 groups.
-`DS`samples seem confined to a region where PC1 is greater than PC2, while `WT` samples are confined in a region where PC2 is greater than PC1.
+`DS` samples seem confined to a region where PC1 is greater than PC2, while `WT` samples are confined in a region where PC2 is greater than PC1.
 The samples seem to be highly clustered according to the slide in which they were run (presumably due to batch effects).
 However, slide `5930514035`, which contains a sample from the `DS` group and a sample from the `WT` group, still respects the pattern of separation between sample groups.
 Randomization of the samples on the slides would have been advisable to allow to test for batch effects separately from sample groups.
 There seem to be no outliers among the samples.
 
 # Step 9
-> Using the matrix of normalized beta values generated in step 7, identify differentially methylated probes between group DS and group WT using the functions assigned to each student.
+> Using the matrix of normalized beta values generated in step 7, identify differentially methylated probes between group `DS` and group `WT` using the functions assigned to each student.
 
 > Note; it can take several minutes; if you encounter any problem you can run the differential  methylated  analysis  only  on  a  subset  of  probes  (for example those on chromosome 1, 18 and 21)
 
@@ -490,16 +495,16 @@ boxplot(complete_beta_p_df[, 9:11])
 > Produce a heatmap of the top 100 differentially methylated probes.
 
 I will use the function `heatmap.2` to produce a heatmap of the top-100 differentially methylated probes (according to raw p-value).
-I first produce an input matrix for the heatmap from the top 100 values of the sorted data frame from step 10.
-I also slice the data frame to exclude p-values and retain only beta-values.
+I first produce an input matrix by slicing the first 100 rows of the sorted data frame from step 10.
+I also slice the data frame by column to exclude p-values and retain only beta-values.
 
 ```{r, message=FALSE, warning=FALSE}
 input_heatmap <- as.matrix(complete_beta_p_df[1:100, 1:8])
 summary(input_heatmap)
 ```
 
-I will now produce the heatmap from these top-100 probes, coloring the samples according to the group to which they belong (`DS` or `WT`).
-I leave the default parameters for clustering (Euclidean distance and complete linkage).
+I will now produce the heatmap from this matrix, coloring the samples according to the group they belong to (`DS` or `WT`).
+For now, I use the default distance metric and linkage method (Euclidean distance and complete linkage).
 
 ```{r, message=FALSE, warning=FALSE}
 DS_col <- 'orange'
@@ -562,7 +567,7 @@ heatmap.2(
 
 We can notice how the result is not so influenced by the linkage method used.
 The samples are well clustered in `WT` and `DS` with all the 3 methods.
-I will also perform hierarchical clustering using the Pearson and Spearman correlation coefficients as distance metrics, instead of euclidean distance.
+I will also perform hierarchical clustering using the Pearson and Spearman correlation coefficients as distance metrics, instead of Euclidean distance.
 This time I will use average linkage as a linkage method.
 
 ```{r, message=FALSE, warning=FALSE}
@@ -852,7 +857,9 @@ plot(d_mean_chr21_beta_DS, main = "Density of Beta Values", col = "red")
 lines(d_mean_chr21_beta_WT, main = "Density of Beta Values", col = "blue")
 ```
 
-I observe that there are no significant differences among `DS` and `WT` samples regarding the distribution of mean beta values for probes on chromosome 21.
+The red line refers to the `DS` group, while the blue line refers to the `WT` group.
+I observe that there are no obviuos differences among `DS` and `WT` samples regarding the distribution of mean beta values for probes on chromosome 21.
+Only the methylated peak of beta values seems slightly more pronounced in the `WT` group.
 
 Now I want to evaluate how many probes are differentially methylated on chromosome 21.
 I will just extract this information from the complete data frame obtained in the previous steps.
