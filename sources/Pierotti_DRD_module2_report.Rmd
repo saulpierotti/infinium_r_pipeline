@@ -40,7 +40,7 @@ require(gplots)
 require(gap)
 require(amap)
 require(magick)
-data_dir <- './Input_data'
+data_dir <- './input_data'
 ```
 
 I load the sample sheet of the experiment using the `minfi` `read.metharray.sheet` function.
